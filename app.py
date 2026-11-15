@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import pydeck as pdk
 
 # Reverted to a centered, clean layout
 st.set_page_config(page_title="Delhi Transit Optimizer", page_icon="🚇", layout="centered")
@@ -65,14 +66,48 @@ if passcode == "TravelMitra":
     with col4:
         work_days = st.number_input("📅 Working Days", min_value=1, value=24, step=1)
 
-    # UI: Map hidden in a sleek dropdown to keep the screen uncluttered
-    with st.expander("🗺️ View Delhi Network Nodes"):
-        map_data = pd.DataFrame({
+    # UI: Graph Theory Visualizer
+    with st.expander("🗺️ View Graph Theory Network (Nodes & Edges)"):
+        # 1. Define Nodes
+        nodes_df = pd.DataFrame({
+            'name': locations,
             'lat': [28.5523, 28.6024, 28.5844, 28.5290, 28.6304],
-            'lon': [77.0583, 77.0256, 77.0805, 77.2052, 77.2177],
-            'name': locations
+            'lon': [77.0583, 77.0256, 77.0805, 77.2052, 77.2177]
         })
-        st.map(map_data, zoom=10, use_container_width=True)
+        
+        # 2. Build Edges (connecting all nodes in the adjacency matrix)
+        edges = []
+        for i in range(len(locations)):
+            for j in range(i + 1, len(locations)):
+                edges.append({
+                    "source_lat": nodes_df.iloc[i]['lat'],
+                    "source_lon": nodes_df.iloc[i]['lon'],
+                    "target_lat": nodes_df.iloc[j]['lat'],
+                    "target_lon": nodes_df.iloc[j]['lon']
+                })
+        edges_df = pd.DataFrame(edges)
+
+        # 3. Render 3D Network Map
+        view_state = pdk.ViewState(latitude=28.5800, longitude=77.1200, zoom=10, pitch=40)
+        
+        scatter_layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=nodes_df,
+            get_position="[lon, lat]",
+            get_color="[255, 50, 50, 200]",
+            get_radius=1200,
+        )
+        
+        line_layer = pdk.Layer(
+            "LineLayer",
+            data=edges_df,
+            get_source_position="[source_lon, source_lat]",
+            get_target_position="[target_lon, target_lat]",
+            get_color="[100, 150, 250, 150]",
+            get_width=3,
+        )
+
+        st.pydeck_chart(pdk.Deck(layers=[line_layer, scatter_layer], initial_view_state=view_state))
 
     # Core Execution
     if st.button("🚀 Calculate Optimal Route", use_container_width=True, type="primary"):
