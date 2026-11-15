@@ -60,9 +60,9 @@ if passcode == "TravelMitra":
         
     col3, col4 = st.columns(2)
     with col3:
-        budget = st.number_input("💰 Max Monthly Budget (Rs)", min_value=100.0, value=2000.0, step=100.0)
+        budget = st.number_input("💰 Max Budget (Rs)", min_value=10.0, value=2000.0, step=50.0)
     with col4:
-        work_days = st.number_input("📅 Working Days", min_value=1, value=24, step=1)
+        total_trips = st.number_input("📅 Total Trips Needed", min_value=1, value=48, step=1)
 
     with st.expander("🗺️ View Graph Theory Network (Nodes & Edges)"):
         nodes_df = pd.DataFrame({
@@ -116,7 +116,7 @@ if passcode == "TravelMitra":
                 
                 st.info(f"**Network Snapshot:** {distance} km | Metro Interchanges: {metro_changes} | Bus Interchanges: {bus_changes}")
                 
-                min_trips = work_days * 2
+                min_trips = total_trips
                 interchange_penalty = 3 
                 
                 metro_time = ((distance / 40) * 60) + (metro_changes * (5 + interchange_penalty)) + 15
@@ -171,7 +171,7 @@ if passcode == "TravelMitra":
                     
                     savings = budget - best_cost
                     m4, m5 = st.columns(2)
-                    m4.metric(label="Total Monthly Cost", value=f"Rs {round(best_cost)}")
+                    m4.metric(label="Total Projected Cost", value=f"Rs {round(best_cost)}")
                     m5.metric(label="Capital Saved", value=f"Rs {round(savings)}")
                     
                     # BUDGET VISUALIZATION BAR
@@ -189,7 +189,7 @@ if passcode == "TravelMitra":
                     
                     # Chart now displays Time Per Trip instead of total monthly time
                     chart_data = pd.DataFrame({
-                        "Monthly Cost (Rs)": [fastest_cost, best_cost, cheapest_total_cost],
+                        "Total Cost (Rs)": [fastest_cost, best_cost, cheapest_total_cost],
                         "Time Per Trip (Mins)": [fastest_mode_time, time_per_trip, (cheapest_total_time / min_trips)]
                     }, index=["Fastest Path (No Budget)", "Your Optimal Plan", "Cheapest Path (Max Time)"])
                     
