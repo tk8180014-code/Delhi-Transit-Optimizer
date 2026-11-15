@@ -58,11 +58,9 @@ if passcode == "TravelMitra":
     with col2:
         end_node = st.selectbox("🏁 Destination", locations, index=1)
         
-    col3, col4 = st.columns(2)
-    with col3:
-        budget = st.number_input("💰 Max Budget (Rs)", min_value=10.0, value=2000.0, step=50.0)
-    with col4:
-        total_trips = st.number_input("📅 Total Trips Needed", min_value=1, value=48, step=1)
+    # UX UPGRADE: Sliders instead of manual typing
+    budget = st.slider("💰 Max Budget (Rs)", min_value=50, max_value=5000, value=2000, step=50)
+    total_trips = st.slider("📅 Total Trips Needed", min_value=1, max_value=60, value=40, step=1)
 
     with st.expander("🗺️ View Graph Theory Network (Nodes & Edges)"):
         nodes_df = pd.DataFrame({
@@ -103,10 +101,11 @@ if passcode == "TravelMitra":
 
         st.pydeck_chart(pdk.Deck(layers=[line_layer, scatter_layer], initial_view_state=view_state))
 
-    if st.button("🚀 Calculate Optimal Route", use_container_width=True, type="primary"):
-        if start_node == end_node:
-            st.warning("You are already at your destination!")
-        else:
+    # UX UPGRADE: Disable button logically if locations match
+    if start_node == end_node:
+        st.warning("You are already at your destination! Please select different locations.")
+    else:
+        if st.button("🚀 Calculate Optimal Route", use_container_width=True, type="primary"):
             with st.spinner('Calculating Linear Programming Constraints...'):
                 
                 route_data = delhi_map[start_node][end_node]
@@ -122,22 +121,19 @@ if passcode == "TravelMitra":
                 metro_time = ((distance / 40) * 60) + (metro_changes * (5 + interchange_penalty)) + 15
                 bus_time = ((distance / 15) * 60) + (bus_changes * (2 + interchange_penalty)) + 15
                 
-                # Minimum Rs 10 fare logic implemented here
                 metro_fare = max(10, min((distance * 2), 60)) + (metro_changes * 40)
                 bus_fare = max(10, min((distance * 1), 25)) + (bus_changes * 15)
                 
                 # --- Unconstrained Extreme Scenarios ---
-                # Fastest Scenario (Ignore Budget)
                 fastest_mode_time = min(metro_time, bus_time)
                 fastest_cost = (metro_fare if metro_time < bus_time else bus_fare) * min_trips
                 fastest_total_time = fastest_mode_time * min_trips
                 
-                # Cheapest Scenario (Ignore Time)
                 cheapest_mode_fare = min(metro_fare, bus_fare)
                 cheapest_total_cost = cheapest_mode_fare * min_trips
                 cheapest_total_time = (metro_time if metro_fare < bus_fare else bus_time) * min_trips
                 
-                # --- Integer LP Loop (Your Optimal Budget) ---
+                # --- Integer LP Loop ---
                 best_time = float('inf')
                 best_cost = float('inf')
                 best_metro = 0
@@ -161,11 +157,20 @@ if passcode == "TravelMitra":
                 st.subheader("2. Optimal Allocation Results")
 
                 if best_time != float('inf'):
+                    # UX UPGRADE: Plain English Verdict
+                    if best_metro > 0 and best_bus > 0:
+                        verdict = f"take the **Metro for {best_metro} trips** and the **Bus for {best_bus} trips**."
+                    elif best_metro > 0:
+                        verdict = f"take the **Metro for all {best_metro} trips**."
+                    else:
+                        verdict = f"take the **Bus for all {best_bus} trips**."
+                        
+                    st.success(f"**Your Best Plan:** To stay under your budget while minimizing travel time, {verdict}")
+                    
                     m1, m2, m3 = st.columns(3)
                     m1.metric(label="Metro Allocations", value=best_metro)
                     m2.metric(label="Bus Allocations", value=best_bus)
                     
-                    # Converted to Time Per Trip
                     time_per_trip = best_time / min_trips
                     m3.metric(label="Avg Time Per Trip", value=f"{round(time_per_trip)} mins")
                     
@@ -174,7 +179,6 @@ if passcode == "TravelMitra":
                     m4.metric(label="Total Projected Cost", value=f"Rs {round(best_cost)}")
                     m5.metric(label="Capital Saved", value=f"Rs {round(savings)}")
                     
-                    # BUDGET VISUALIZATION BAR
                     budget_pct = best_cost / budget
                     st.progress(min(budget_pct, 1.0))
                     st.caption(f"**Budget Consumed:** {round(budget_pct * 100)}%")
@@ -182,12 +186,10 @@ if passcode == "TravelMitra":
                     st.caption(f"*One-way time breakdown (including last-mile): Metro ~{round(metro_time)} mins, Bus ~{round(bus_time)} mins*")
                     st.caption(f"*One-way fare breakdown: Metro Rs {round(metro_fare)}, Bus Rs {round(bus_fare)}*")
                     
-                    # ANALYTICS COMPARISON CHART
                     st.divider()
                     st.subheader("📊 Scenario Analytics")
                     st.markdown("Comparing your budget-optimized plan against the extreme fastest and cheapest mathematical paths.")
                     
-                    # Chart now displays Time Per Trip instead of total monthly time
                     chart_data = pd.DataFrame({
                         "Total Cost (Rs)": [fastest_cost, best_cost, cheapest_total_cost],
                         "Time Per Trip (Mins)": [fastest_mode_time, time_per_trip, (cheapest_total_time / min_trips)]
