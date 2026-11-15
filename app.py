@@ -122,8 +122,9 @@ if passcode == "TravelMitra":
                 metro_time = ((distance / 40) * 60) + (metro_changes * (5 + interchange_penalty)) + 15
                 bus_time = ((distance / 15) * 60) + (bus_changes * (2 + interchange_penalty)) + 15
                 
-                metro_fare = min((distance * 2), 60) + (metro_changes * 40)
-                bus_fare = min((distance * 1), 25) + (bus_changes * 15)
+                # Minimum Rs 10 fare logic implemented here
+                metro_fare = max(10, min((distance * 2), 60)) + (metro_changes * 40)
+                bus_fare = max(10, min((distance * 1), 25)) + (bus_changes * 15)
                 
                 # --- Unconstrained Extreme Scenarios ---
                 # Fastest Scenario (Ignore Budget)
@@ -163,12 +164,14 @@ if passcode == "TravelMitra":
                     m1, m2, m3 = st.columns(3)
                     m1.metric(label="Metro Allocations", value=best_metro)
                     m2.metric(label="Bus Allocations", value=best_bus)
-                    daily_avg_time = best_time / work_days
-                    m3.metric(label="Daily Commute Time", value=f"{round(daily_avg_time)} mins")
+                    
+                    # Converted to Time Per Trip
+                    time_per_trip = best_time / min_trips
+                    m3.metric(label="Avg Time Per Trip", value=f"{round(time_per_trip)} mins")
                     
                     savings = budget - best_cost
                     m4, m5 = st.columns(2)
-                    m4.metric(label="Total Projected Cost", value=f"Rs {round(best_cost)}")
+                    m4.metric(label="Total Monthly Cost", value=f"Rs {round(best_cost)}")
                     m5.metric(label="Capital Saved", value=f"Rs {round(savings)}")
                     
                     # BUDGET VISUALIZATION BAR
@@ -184,9 +187,10 @@ if passcode == "TravelMitra":
                     st.subheader("📊 Scenario Analytics")
                     st.markdown("Comparing your budget-optimized plan against the extreme fastest and cheapest mathematical paths.")
                     
+                    # Chart now displays Time Per Trip instead of total monthly time
                     chart_data = pd.DataFrame({
-                        "Total Cost (Rs)": [fastest_cost, best_cost, cheapest_total_cost],
-                        "Total Commute Time (Mins)": [fastest_total_time, best_time, cheapest_total_time]
+                        "Monthly Cost (Rs)": [fastest_cost, best_cost, cheapest_total_cost],
+                        "Time Per Trip (Mins)": [fastest_mode_time, time_per_trip, (cheapest_total_time / min_trips)]
                     }, index=["Fastest Path (No Budget)", "Your Optimal Plan", "Cheapest Path (Max Time)"])
                     
                     st.bar_chart(chart_data)
